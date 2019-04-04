@@ -1,0 +1,77 @@
+import json
+import requests
+import datetime as dt
+import matplotlib.pyplot as plt
+
+source_cc = "USD"
+target_cc = "RUB"
+i = 86400
+
+request_url = 'https://www.google.no/async/currency_v2_update?async=source_amount:1,source_currency:{0},target_currency:{1},lang:en,country:no,disclaimer_url:,period:{2},interval:{3},_fmt:json'
+
+
+def get_currency_rates(source_cc, target_cc, period, interval):
+    try:
+        r = requests.get(url= request_url.format(source_cc, target_cc, period, interval))
+        r.raise_for_status()
+    except requests.exceptions.ConnectionError as e:
+        print(e)
+        sys.exit(0)
+
+    except requests.exceptions.HTTPError as e:
+        print(e)
+        sys.exit(0)
+
+    try:
+        data = json.loads(r.text[4:])
+    except json.JSONDecodeError as e:
+        print(e)
+        sys.exit()
+
+    points = list(data['CurrencyV2Chart']['common_chart_data']['series'][0]['sections'][0]['points'])
+    filtered_data = list(map(lambda x: {'date': dt.datetime.fromtimestamp(x['minutes_since_the_epoch'] * 60), 'value': x['values'][0]['value']},points))
+
+    return filtered_data
+
+
+def handle_user_input():
+    while True:
+        print('Выберите период')
+        cmd = int(input())
+        if cmd in range(1, 8):
+            break
+        print('Введено неверное значение')
+    return cmd
+
+
+def get_time_data(index):
+    return {1: ('1d', dt.timedelta(minutes=5)),
+            2: ('2d', dt.timedelta(minutes=10)),
+            3: ('5d', dt.timedelta(minutes=30)),
+            4: ('7d', dt.timedelta(minutes=30)),
+            5: ('1M', dt.timedelta(days=1)),
+            6: ('1Y', dt.timedelta(days=2)),
+            7: ('5Y', dt.timedelta(days=7))
+            }[index]
+
+
+def draw_plot(currency_data):
+    x = list(map(lambda x: x['date'].strftime('%x - %X'), currency_data))
+    y = list(map(lambda x: x['value'], currency_data))
+
+    fig, ax = plt.subplots()
+    ax.plot(x, y)
+    plt.show()
+
+
+def main():
+    message = '1 - 24 часа\n2 - 2 дня\n3 - 5 дней\n4 - 1 неделя\n5 - 1 месяц\n6 - 1 год\n7 - 5 лет'
+    print(message)
+    period_choice = handle_user_input()
+    period, interval = get_time_data(period_choice)
+    currency_data = get_currency_rates(source_cc, target_cc, period, int(interval.total_seconds()))
+    draw_plot(currency_data)
+
+
+if __name__ == "__main__":
+    main()
