@@ -1,0 +1,123 @@
+// Имеется дерево, корень которого соответствует основателю рода. 
+// Сыновья каждой вершины задают сыновей и дочерей соответствующего человека. 
+// Указываются имена двух человек (например, А и В). 
+// Сообщить, какая из следующих ситуаций имеет место: 
+// 1) А предок В; 
+// 2) В предок А; 
+// 3) А и В имеют ближайшего общего предка С
+
+#include <iostream>
+#include <vector>
+#include <list>
+#include <string>
+
+using std::string;
+using std::vector;
+
+class BTree {
+public:
+	BTree() {
+		root = nullptr;
+		current = nullptr;
+	}
+
+	~BTree() {
+		delete root;
+		delete current;
+	}
+
+	void add(string name) {
+		if (root == nullptr) {
+			root = new Node;
+			root->data = name;
+		}
+		else {
+			root->descendants.push_back(name);
+		}
+	}
+
+	bool check_double(string parent, string kid) {
+		if (root == nullptr)
+			return false;
+		else {
+			if (root->data != parent)
+				return false;
+			else {
+				if (root->descendants.size() == 0)
+					return false;
+				else {
+					auto it_begin = root->descendants.begin();
+					auto it_end = root->descendants.end();
+
+					for (; it_begin != it_end; ++it_begin) {
+						if (kid == *it_begin)
+							return true;
+						continue;
+					}
+					return false;
+				}
+			}
+		}
+	}
+
+	bool check_triple(string sibling1, string sibling2, string parent) {
+		if (root == nullptr)
+			return false;
+		else {
+			if (root->data != parent)
+				return false;
+			else {
+				if (root->descendants.size() < 2)
+					return false;
+				else {
+					std::list<string> temp;
+					std::list<string> check = { sibling1, sibling2 };
+					auto it_begin = root->descendants.begin();
+					auto it_end = root->descendants.end();
+
+					for (; it_begin != it_end; ++it_begin) {
+						if (*it_begin == sibling1)
+							temp.push_front(*it_begin);
+						else if (*it_begin == sibling2)
+							temp.push_back(*it_begin);
+						else continue;
+					}
+
+					if (temp != check) {
+						return false;
+					}
+					else {
+						return true;
+					}
+				}
+			}
+		}
+	}
+private:
+	struct Node {
+		string data;
+		vector<string> descendants;
+	};
+	Node *root;
+	Node *current;
+};
+
+int main() {
+
+	BTree tree;
+	tree.add("Harry");
+	tree.add("Pavel");
+	tree.add("Andy");
+	tree.add("Mary");
+
+	if (tree.check_double("Andy", "Pavel") == true)
+		std::cout << "True\n";
+	else std::cout << "False\n";
+
+	if(tree.check_triple("Mary", "Andy", "Harry") == true)
+		std::cout << "True\n";
+	else std::cout << "False\n";
+
+	system("pause");
+	return 0;
+}
