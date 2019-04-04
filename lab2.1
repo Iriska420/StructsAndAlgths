@@ -1,0 +1,111 @@
+// Составить программу для построения и обработки дерева общего вида или упорядоченного двоичного дерева, 
+// содержащего узлы целого типа. 
+// Действие: Добавление нового узла 
+// (для двоичного дерева положение нового узла определяется в соответствии с требованием сохранения порядка, 
+// для дерева общего вида должен задаваться путь до добавляемого узла, добавляемый узел становится младшим сыном)
+
+#include <iostream>
+
+class BTree {
+public:
+	BTree() {
+		current = nullptr;
+		root = nullptr;
+		size = 0;
+	}
+
+	~BTree()
+	{
+		delete root;
+	}
+
+	void add(int _data) {
+		if (root == nullptr) {
+			root = new Node;
+			root->data = _data;
+			root->left = nullptr;
+			root->right = nullptr;
+			size++;
+			current = root;
+		}
+		else {
+			current = root;
+			add_node(current, _data);
+		}
+	}
+
+	void print() {
+		inorder_traversal(this->root);
+	}
+
+private:
+
+	struct Node {
+		int data;
+		Node *left;
+		Node *right;
+	};
+
+	Node *current;
+	Node *root;
+	unsigned int size;
+
+	void inorder_traversal(Node *node) {
+		if (node == NULL)
+			return;
+		inorder_traversal(node->left);
+		std::cout << node->data << ' ';
+		inorder_traversal(node->right);
+	}
+
+	void add_node(Node *current, int data) {
+		if (current->data > data) {
+			if (current->left == nullptr) {
+				current->left = new Node;
+				current->left->data = data;
+				current->left->left = nullptr;
+				current->left->right = nullptr;
+				size++;
+			}
+			else {
+				current = current->left;
+				add_node(current, data);
+			}
+		}
+		else if (current->data < data) {
+			if (current->right == nullptr) {
+				current->right = new Node;
+				current->right->data = data;
+				current->right->left = nullptr;
+				current->right->right = nullptr;
+				size++;
+			}
+			else {
+				current = current->right;
+				add_node(current, data);
+			}
+		}
+		else return;
+	}
+};
+
+int main() {
+
+	BTree tree;
+	tree.add(12);
+	tree.add(8);
+	tree.add(10);
+	tree.add(9);
+	tree.add(15);
+	tree.add(13);
+	tree.add(17);
+	tree.add(14);
+	tree.add(2);
+	tree.add(2);
+
+	printf("Inorder traversal\n");
+	tree.print();
+	printf("\n");
+
+	system("pause");
+}
