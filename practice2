@@ -1,0 +1,93 @@
+import json
+import requests
+import datetime as dt
+import matplotlib.pyplot as plt
+import sys
+
+
+def get_currency_rates(source_cc, target_cc, period, interval):
+    request_url = 'https://www.google.no/async/currency_v2_update?async=source_amount:' \
+                  '1,source_currency:{0},' \
+                  'target_currency:{1},' \
+                  'lang:en,country:no,disclaimer_url:,period:{2},' \
+                  'interval:{3},_fmt:json'
+    try:
+        r = requests.get(url=request_url.format(source_cc, target_cc, period, interval))
+        r.raise_for_status()
+    except requests.exceptions.ConnectionError as e:
+        print(e)
+        sys.exit(0)
+    except requests.exceptions.HTTPError as e:
+        print(e)
+        sys.exit(0)
+
+    try:
+        data = json.loads(r.text[4:])
+    except json.JSONDecodeError as e:
+        print(e)
+        sys.exit()
+
+    points = list(data['CurrencyV2Chart']['common_chart_data']['series'][0]['sections'][0]['points'])
+    filtered_data = list(map(lambda x: {'date': dt.datetime.fromtimestamp(x['minutes_since_the_epoch'] * 60),
+                                        'value': x['values'][0]['value']}, points))
+
+    return filtered_data
+
+
+def get_sma(data, lag):
+    result = [None] * (lag - 1)
+    for i in range(lag - 1, len(data)):
+        result.append(sum(data[i - (lag - 1):i + 1]) / lag)
+    return result
+
+
+def plot_data(currency_data):
+    x = list(map(lambda x: x['date'].strftime('%x - %X'), currency_data))
+    y = list(map(lambda x: x['value'], currency_data))
+
+    sma = get_sma(y, 5)
+
+    plt.plot(x, y, label='Cost')
+    plt.plot(sma, label='Avg')
+    plt.xticks([x[0], x[-1]])
+    plt.legend()
+    plt.show()
+
+
+def get_time_data(index):
+    return \
+    {1: ('1d', dt.timedelta(minutes=5)),
+     2: ('2d', dt.timedelta(minutes=10)),
+     3: ('5d', dt.timedelta(minutes=30)),
+     4: ('7d', dt.timedelta(minutes=30)),
+     5: ('1M', dt.timedelta(days=1)),
+     6: ('1Y', dt.timedelta(days=2)),
+     7: ('5Y', dt.timedelta(days=7))}[index]
+
+
+def handle_user_input():
+    while True:
+        print('Enter period')
+        cmd = int(input())
+        if cmd in range(1, 8):
+            break
+        print('Incorrect value')
+    return cmd
+
+
+def main():
+    message = '1: 24 HOURS\n2: 2 DAYS\n3: 5 DAYS\n4: 1 WEEK\n5: 1 MONTH\n6: 1 YEAR\n7: 5 YEARS'
+    print(message)
+
+    period_choice = handle_user_input()
+    period, interval = get_time_data(period_choice)
+
+    source_cc = "USD"
+    target_cc = "RUB"
+    currency_data = get_currency_rates(source_cc, target_cc, period, int(interval.total_seconds()))
+
+    plot_data(currency_data)
+
+
+if __name__ == "__main__":
+    main()
