@@ -1,0 +1,73 @@
+import json
+import requests
+import datetime
+import matplotlib.pyplot as plt
+import sys
+
+
+def plot_data(data):
+    x = list(map(lambda x: x['time'], data))
+    y = list(map(lambda x: x['value'], data))
+
+    plt.plot(x, y)
+    plt.xticks([x[0], x[-1]])
+    plt.legend()
+    plt.show()
+
+
+def handle_user_input():
+    while True:
+        print('Enter period')
+        cmd = int(input())
+        if cmd in range(1, 4):
+            break
+        print('Wrong value')
+    return cmd
+
+
+def get_weather_data():
+
+    try:
+        r = requests.get('https://api.darksky.net/forecast/7140833ee8580c5fd73d822d3f2fcd70/68.957609,33.092809')
+        r.raise_for_status()
+    except requests.exceptions.ConnectionError as e:
+        print(e)
+        sys.exit(0)
+    except requests.exceptions.HTTPError as e:
+        print(e)
+        sys.exit(0)
+
+    try:
+        data = json.loads(r.text)
+    except json.JSONDecodeError as e:
+        print(e)
+        sys.exit()
+
+    return data
+
+
+def fahrenheit_to_celsius(f):
+    return (f - 32) * 5 / 9
+
+
+def extract_data(data, choice):
+    array, field_name = {1: (data['hourly']['data'][0:25], 'temperature'),
+                         2: (data['hourly']['data'], 'temperature'),
+                         3: (data['daily']['data'], 'temperatureHigh')}[choice]
+
+    return list(map(lambda x: {'value': int(fahrenheit_to_celsius(x[field_name])),
+                               'time': datetime.datetime.fromtimestamp(x['time']).strftime('%x - %X')}, array))
+
+
+def main():
+    message = '1: 24 HOURS\n2: 2 DAYS\n3: 1 WEEK'
+
+    data = get_weather_data()
+    print(message)
+    period_choice = handle_user_input()
+    data = extract_data(data, period_choice)
+    plot_data(data)
+
+
+if __name__ == "__main__":
+    main()
