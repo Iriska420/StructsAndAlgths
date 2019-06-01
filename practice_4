@@ -1,0 +1,77 @@
+from gmplot import gmplot
+import json
+import datetime
+import webbrowser
+
+def load_data(path):
+    try:
+        with open(path) as file:
+            return json.load(file)
+    except IOError as e:
+        print('Ошибка при открытии файла')
+    except json.JSONDecodeError as e:
+        print('Ошибка синтаксиса json')
+
+def extract_points(data):
+    track = data['result']['response']['data']['flight']['track']
+    filtered = list(map(lambda x: (x['latitude'], x['longitude'], x['timestamp']), track))
+    return filtered
+
+def in_numerical_range(value, a, b):
+    return value >= a and value <= b
+    
+def chose_closest_point(value, data):
+    prev_item = data[0]
+    for i in data[1:]:
+        delta = value - i[2]
+        if delta < 0:
+            return prev_item
+        else:
+            prev_item = i
+    return prev_item
+
+def chose_point_to_show(points):
+    input_format = '%d.%m.%Y %H:%M:%S'
+    message = 'Введите дату в формате ДД.ММ.ГГГГ ЧЧ:ММ:СС'
+    print(message)
+    
+    while True:
+        user_input = input()
+        try:
+            date = datetime.datetime.strptime(user_input, input_format)
+            timestamp = date.timestamp()
+            if in_numerical_range(timestamp, points[0][2], points[-1][2]):
+                break
+            else:
+                print('Введенная дата не входит в период')
+        except ValueError() as e:
+            print('Ошибка форматирования')
+    
+    return chose_closest_point(timestamp, points)
+
+def print_flight_info(data):
+    flight = data['result']['response']['data']['flight']
+    print('Номер рейса: {}'.format(flight['identification']['number']['default']))
+    print('Вылет: {}'.format(flight['airport']['origin']['name']))
+    print('Точка назначения: {}'.format(flight['airport']['destination']['name']))
+
+    track = flight['track']
+    t_start = datetime.datetime.fromtimestamp(track[0]['timestamp']).strftime('%X %x')
+    t_end = datetime.datetime.fromtimestamp(track[-1]['timestamp']).strftime('%X %x')
+    print('Период полёта: с {0} по {1}'.format(t_start, t_end))
+
+def main():
+    data = load_data('./data.json')
+    print_flight_info(data)
+    points = extract_points(data)
+    target_point = chose_point_to_show(points)
+    print(target_point)
+        
+    gmap = gmplot.GoogleMapPlotter(target_point[0], target_point[1], 16)
+    path_lat, path_lon, _ = zip(*points)
+    gmap.marker(target_point[0], target_point[1], 'cornflowerblue')
+    gmap.draw("my_map.html")
+    webbrowser.open('my_map.html')
+
+if __name__ == '__main__':
+    main()
